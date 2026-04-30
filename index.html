@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Justificaciones | Escolar</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .glass { background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); }
+    .loader { border-top-color: #3b82f6; animation: spinner 1.5s linear infinite; }
+    @keyframes spinner { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
+
+<div id="form-container" class="glass p-8 rounded-2xl shadow-2xl w-full max-w-lg transition-all duration-500">
+
+  <!-- ENCABEZADO -->
+  <div class="text-center mb-6">
+    <div class="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+      <i class="fas fa-file-medical text-white text-2xl"></i>
+    </div>
+    <h2 class="text-3xl font-bold text-gray-800">Justificación</h2>
+    <p class="text-gray-500 text-sm">Adjunta tu certificado (JPG, PNG o PDF · máx. 10 MB)</p>
+  </div>
+
+  <!--
+    AVISO DE TELEGRAM:
+    El formulario DEBE abrirse con ?tgid=TU_CHAT_ID en la URL
+    para recibir notificaciones. Ejemplo:
+      formulario.html?tgid=8546238882
+    El bot genera el enlace automáticamente cuando el usuario hace /start.
+  -->
+  <div id="tgid-banner" class="hidden mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-sm text-yellow-800">
+    <i class="fas fa-exclamation-triangle mr-1"></i>
+    <strong>Sin Telegram ID</strong> — No recibirás notificaciones.
+    Accede al formulario desde el enlace que te envió el bot.
+  </div>
+
+  <!-- FORMULARIO -->
+  <form id="inasistencia-form" class="space-y-4">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input type="text" name="nombre" id="nombre" required minlength="3"
+        title="Mínimo 3 caracteres"
+        placeholder="Nombre completo"
+        class="w-full border rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+
+      <input type="text" name="id_estudiante" id="id_estudiante" required
+        pattern="[a-zA-Z0-9]{4,20}"
+        title="Entre 4 y 20 caracteres, sin espacios ni símbolos"
+        placeholder="ID Estudiante (sin puntos)"
+        class="w-full border rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+    </div>
+
+    <input type="email" name="correo" id="correo" required
+      placeholder="Correo electrónico"
+      class="w-full border rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input type="date" name="fecha_inasistencia" id="fecha_inasistencia" required
+        class="w-full border rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+
+      <select name="motivo" id="motivo" required
+        class="w-full border rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+        <option value="" disabled selected>Selecciona un motivo</option>
+        <option value="salud">Salud</option>
+        <option value="familiar">Familiar</option>
+        <option value="otro">Otro</option>
+      </select>
+    </div>
+
+    <textarea name="descripcion" id="descripcion" rows="2" required minlength="10"
+      title="Mínimo 10 caracteres"
+      placeholder="Breve descripción... (mínimo 10 caracteres)"
+      class="w-full border rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+
+    <!-- ZONA DE ARCHIVO -->
+    <div class="border-2 border-dashed border-blue-200 rounded-xl p-4 bg-blue-50/50">
+      <label class="block text-sm font-semibold text-blue-800 mb-2">
+        Certificado / Soporte (JPG, PNG, PDF)
+      </label>
+      <label id="file-label"
+        class="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-white hover:bg-gray-50 transition">
+        <i class="fas fa-cloud-upload-alt text-gray-400 text-2xl mb-1"></i>
+        <p class="text-xs text-gray-500" id="file-name">Click para subir archivo</p>
+        <!--
+          CORRECCIÓN: type="file" ya no tiene "required"
+          La validación se hace manualmente en JS para poder mostrar mensaje custom.
+        -->
+        <input type="file" name="archivo_soporte" id="archivo_soporte"
+          accept=".pdf,image/jpeg,image/png,image/jpg"
+          class="hidden">
+      </label>
+      <p id="archivo-error" class="hidden text-red-500 text-xs mt-2">
+        <i class="fas fa-exclamation-triangle"></i> Debes adjuntar un certificado o soporte.
+      </p>
+      <p id="archivo-tipo-error" class="hidden text-red-500 text-xs mt-2">
+        <i class="fas fa-exclamation-triangle"></i> Formato no permitido. Usa PDF, JPG o PNG.
+      </p>
+      <p id="archivo-size-error" class="hidden text-red-500 text-xs mt-2">
+        <i class="fas fa-exclamation-triangle"></i> El archivo supera 10 MB.
+      </p>
+    </div>
+
+    <button type="button" id="submit-btn" onclick="enviarFormulario()"
+      class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">
+      <span>Enviar Justificación</span>
+      <i class="fas fa-paper-plane text-sm"></i>
+    </button>
+  </form>
+
+  <!-- LOADING -->
+  <div id="loading" class="hidden text-center py-10">
+    <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4 mx-auto"></div>
+    <p class="text-gray-600">Subiendo archivo y analizando con IA...</p>
+  </div>
+
+  <!-- ÉXITO -->
+  <div id="success-screen" class="hidden text-center py-8">
+    <div class="text-green-500 text-6xl mb-4"><i class="fas fa-check-circle"></i></div>
+    <h3 class="text-2xl font-bold text-gray-800 mb-2">¡Todo listo!</h3>
+    <p class="text-gray-500 mb-2">Tu solicitud fue recibida.</p>
+    <p class="text-gray-500 mb-6 font-mono text-sm" id="res-id"></p>
+    <a id="tg-link" href="#" target="_blank"
+      class="bg-[#0088cc] text-white font-bold py-3 px-8 rounded-full shadow-lg inline-flex items-center gap-2">
+      <i class="fab fa-telegram-plane"></i> RECIBIR EN TELEGRAM
+    </a>
+    <p class="text-xs text-gray-400 mt-3" id="tg-nota"></p>
+  </div>
+
+  <!-- ERROR -->
+  <div id="error-screen" class="hidden text-center py-8">
+    <div class="text-red-500 text-6xl mb-4"><i class="fas fa-times-circle"></i></div>
+    <h3 class="text-2xl font-bold text-gray-800 mb-2">Error en la solicitud</h3>
+    <p id="error-msg" class="text-gray-600 mb-6 text-sm px-4 bg-red-50 py-3 rounded-lg border border-red-100"></p>
+    <button onclick="reintentar()"
+      class="bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg inline-flex items-center gap-2">
+      <i class="fas fa-redo"></i> Corregir datos
+    </button>
+  </div>
+
+</div>
+
+<script>
+  // ─── CONFIGURACIÓN ──────────────────────────────────────────────────────────
+  // CORRECCIÓN: No hay fallback hardcodeado para tgid.
+  // Si no viene en la URL, el flujo continúa pero sin notificación Telegram.
+  const ES_PRUEBA = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const N8N_WEBHOOK_URL = ES_PRUEBA
+  ? 'https://apolo-jk.app.n8n.cloud/webhook-test/inasistencia'
+  : 'https://apolo-jk.app.n8n.cloud/webhook/inasistencia';
+  const TELEGRAM_BOT_USER = 'alertas_2026_ia_bot';
+  const MAX_FILE_MB = 10;
+  const TIPOS_VALIDOS = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+
+  // ─── LEER tgid DE LA URL ────────────────────────────────────────────────────
+  const params = new URLSearchParams(window.location.search);
+  const tgid = params.get('tgid') || '';
+
+  // Mostrar banner de advertencia si no hay tgid
+  if (!tgid) {
+    document.getElementById('tgid-banner').classList.remove('hidden');
+  }
+
+  // ─── VALIDACIÓN DE ARCHIVO AL SELECCIONAR ──────────────────────────────────
+  document.getElementById('archivo_soporte').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    ocultarErroresArchivo();
+
+    if (!file) {
+      document.getElementById('file-name').textContent = 'Click para subir archivo';
+      document.getElementById('file-label').classList.remove('border-green-400');
+      return;
+    }
+
+    // Validar tipo
+    if (!TIPOS_VALIDOS.includes(file.type)) {
+      document.getElementById('archivo-tipo-error').classList.remove('hidden');
+      this.value = '';
+      return;
+    }
+
+    // Validar tamaño
+    if (file.size > MAX_FILE_MB * 1024 * 1024) {
+      document.getElementById('archivo-size-error').classList.remove('hidden');
+      this.value = '';
+      return;
+    }
+
+    document.getElementById('file-name').textContent = file.name + ' (' + (file.size / 1024).toFixed(0) + ' KB)';
+    document.getElementById('file-label').classList.add('border-green-400');
+  });
+
+  function ocultarErroresArchivo() {
+    ['archivo-error', 'archivo-tipo-error', 'archivo-size-error']
+      .forEach(id => document.getElementById(id).classList.add('hidden'));
+  }
+
+  // ─── FUNCIÓN REINTENTAR ─────────────────────────────────────────────────────
+  function reintentar() {
+    document.getElementById('error-screen').classList.add('hidden');
+    document.getElementById('inasistencia-form').classList.remove('hidden');
+  }
+
+  // ─── ENVÍO DEL FORMULARIO ──────────────────────────────────────────────────
+  async function enviarFormulario() {
+
+    // 1. Validar archivo manualmente
+    const archivoInput = document.getElementById('archivo_soporte');
+    if (!archivoInput.files || archivoInput.files.length === 0) {
+      document.getElementById('archivo-error').classList.remove('hidden');
+      return;
+    }
+    ocultarErroresArchivo();
+
+    // 2. Validar campos HTML5 nativos (nombre, id, correo, fecha, motivo, descripcion)
+    const form = document.getElementById('inasistencia-form');
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    // 3. Armar FormData
+    //    CORRECCIÓN: el tgid se agrega como campo dentro del body (no solo en la URL)
+    //    así n8n lo puede leer de raw.body.tgid sin depender del query parser.
+    const formData = new FormData(form);
+    formData.set('tgid', tgid); // campo extra en el body
+
+    // 4. Mostrar loading, ocultar formulario
+    document.getElementById('inasistencia-form').classList.add('hidden');
+    document.getElementById('loading').classList.remove('hidden');
+
+    try {
+      //    CORRECCIÓN: la URL incluye ?tgid= como respaldo adicional
+      //    (el nodo de n8n busca en query Y en body, cualquiera que llegue primero)
+      const urlConTgid = tgid
+        ? `${N8N_WEBHOOK_URL}?tgid=${encodeURIComponent(tgid)}`
+        : N8N_WEBHOOK_URL;
+
+      const response = await fetch(urlConTgid, {
+        method: 'POST',
+        // NO poner Content-Type manualmente — el browser lo agrega
+        // automáticamente con el boundary correcto para multipart/form-data
+        body: formData
+      });
+
+      // 5. Leer respuesta como texto primero (n8n a veces devuelve texto plano)
+      const responseText = await response.text();
+      let data = {};
+
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch (_) {
+          console.warn('n8n no devolvió JSON válido:', responseText);
+        }
+      }
+
+      // 6. Detectar errores HTTP o lógicos
+      if (!response.ok || data.success === false) {
+        throw new Error(data.error || `Error del servidor: código ${response.status}`);
+      }
+
+      // 7. Pantalla de éxito
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('success-screen').classList.remove('hidden');
+      document.getElementById('res-id').textContent = 'ID de solicitud: ' + (data.id_solicitud || 'N/A');
+
+      const tgLink = document.getElementById('tg-link');
+      const tgNota = document.getElementById('tg-nota');
+
+      if (tgid) {
+        tgLink.href = `https://t.me/${TELEGRAM_BOT_USER}?start=${data.id_solicitud}`;
+        tgNota.textContent = 'Haz clic para abrir el bot y recibir la notificación.';
+      } else {
+        tgLink.classList.add('opacity-50', 'pointer-events-none');
+        tgNota.textContent = 'Sin Telegram ID — no disponible en esta sesión.';
+      }
+
+    } catch (error) {
+      console.error('Error al enviar formulario:', error);
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('error-screen').classList.remove('hidden');
+      document.getElementById('error-msg').textContent = error.message;
+    }
+  }
+</script>
+
+</body>
+</html>
