@@ -27,19 +27,6 @@
     <p class="text-gray-500 text-sm">Adjunta tu certificado (JPG, PNG o PDF · máx. 10 MB)</p>
   </div>
 
-  <!--
-    AVISO DE TELEGRAM:
-    El formulario DEBE abrirse con ?tgid=TU_CHAT_ID en la URL
-    para recibir notificaciones. Ejemplo:
-      formulario.html?tgid=8546238882
-    El bot genera el enlace automáticamente cuando el usuario hace /start.
-  -->
-  <div id="tgid-banner" class="hidden mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-sm text-yellow-800">
-    <i class="fas fa-exclamation-triangle mr-1"></i>
-    <strong>Sin Telegram ID</strong> — No recibirás notificaciones.
-    Accede al formulario desde el enlace que te envió el bot.
-  </div>
-
   <!-- FORMULARIO -->
   <form id="inasistencia-form" class="space-y-4">
 
@@ -87,10 +74,6 @@
         class="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-white hover:bg-gray-50 transition">
         <i class="fas fa-cloud-upload-alt text-gray-400 text-2xl mb-1"></i>
         <p class="text-xs text-gray-500" id="file-name">Click para subir archivo</p>
-        <!--
-          CORRECCIÓN: type="file" ya no tiene "required"
-          La validación se hace manualmente en JS para poder mostrar mensaje custom.
-        -->
         <input type="file" name="archivo_soporte" id="archivo_soporte"
           accept=".pdf,image/jpeg,image/png,image/jpg"
           class="hidden">
@@ -123,13 +106,13 @@
   <div id="success-screen" class="hidden text-center py-8">
     <div class="text-green-500 text-6xl mb-4"><i class="fas fa-check-circle"></i></div>
     <h3 class="text-2xl font-bold text-gray-800 mb-2">¡Todo listo!</h3>
-    <p class="text-gray-500 mb-2">Tu solicitud fue recibida.</p>
+    <p class="text-gray-500 mb-2">Tu solicitud fue recibida y está siendo analizada.</p>
     <p class="text-gray-500 mb-6 font-mono text-sm" id="res-id"></p>
     <a id="tg-link" href="#" target="_blank"
       class="bg-[#0088cc] text-white font-bold py-3 px-8 rounded-full shadow-lg inline-flex items-center gap-2">
-      <i class="fab fa-telegram-plane"></i> RECIBIR EN TELEGRAM
+      <i class="fab fa-telegram-plane"></i> RECIBIR RESULTADO EN TELEGRAM
     </a>
-    <p class="text-xs text-gray-400 mt-3" id="tg-nota"></p>
+    <p class="text-xs text-gray-400 mt-3">Abre el bot y presiona Start para vincularte y recibir la notificación.</p>
   </div>
 
   <!-- ERROR -->
@@ -146,27 +129,14 @@
 </div>
 
 <script>
-  // ─── CONFIGURACIÓN ──────────────────────────────────────────────────────────
-  // CORRECCIÓN: No hay fallback hardcodeado para tgid.
-  // Si no viene en la URL, el flujo continúa pero sin notificación Telegram.
   const ES_PRUEBA = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const N8N_WEBHOOK_URL = ES_PRUEBA
-  ? 'https://apolo-jk.app.n8n.cloud/webhook-test/inasistencia'
-  : 'https://apolo-jk.app.n8n.cloud/webhook/inasistencia';
+    ? 'https://apolo-jk.app.n8n.cloud/webhook-test/inasistencia'
+    : 'https://apolo-jk.app.n8n.cloud/webhook/inasistencia';
   const TELEGRAM_BOT_USER = 'alertas_2026_ia_bot';
   const MAX_FILE_MB = 10;
   const TIPOS_VALIDOS = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
 
-  // ─── LEER tgid DE LA URL ────────────────────────────────────────────────────
-  const params = new URLSearchParams(window.location.search);
-  const tgid = params.get('tgid') || '';
-
-  // Mostrar banner de advertencia si no hay tgid
-  if (!tgid) {
-    document.getElementById('tgid-banner').classList.remove('hidden');
-  }
-
-  // ─── VALIDACIÓN DE ARCHIVO AL SELECCIONAR ──────────────────────────────────
   document.getElementById('archivo_soporte').addEventListener('change', function(e) {
     const file = e.target.files[0];
     ocultarErroresArchivo();
@@ -177,14 +147,12 @@
       return;
     }
 
-    // Validar tipo
     if (!TIPOS_VALIDOS.includes(file.type)) {
       document.getElementById('archivo-tipo-error').classList.remove('hidden');
       this.value = '';
       return;
     }
 
-    // Validar tamaño
     if (file.size > MAX_FILE_MB * 1024 * 1024) {
       document.getElementById('archivo-size-error').classList.remove('hidden');
       this.value = '';
@@ -200,16 +168,12 @@
       .forEach(id => document.getElementById(id).classList.add('hidden'));
   }
 
-  // ─── FUNCIÓN REINTENTAR ─────────────────────────────────────────────────────
   function reintentar() {
     document.getElementById('error-screen').classList.add('hidden');
     document.getElementById('inasistencia-form').classList.remove('hidden');
   }
 
-  // ─── ENVÍO DEL FORMULARIO ──────────────────────────────────────────────────
   async function enviarFormulario() {
-
-    // 1. Validar archivo manualmente
     const archivoInput = document.getElementById('archivo_soporte');
     if (!archivoInput.files || archivoInput.files.length === 0) {
       document.getElementById('archivo-error').classList.remove('hidden');
@@ -217,38 +181,23 @@
     }
     ocultarErroresArchivo();
 
-    // 2. Validar campos HTML5 nativos (nombre, id, correo, fecha, motivo, descripcion)
     const form = document.getElementById('inasistencia-form');
     if (!form.checkValidity()) {
       form.reportValidity();
       return;
     }
 
-    // 3. Armar FormData
-    //    CORRECCIÓN: el tgid se agrega como campo dentro del body (no solo en la URL)
-    //    así n8n lo puede leer de raw.body.tgid sin depender del query parser.
     const formData = new FormData(form);
-    formData.set('tgid', tgid); // campo extra en el body
 
-    // 4. Mostrar loading, ocultar formulario
     document.getElementById('inasistencia-form').classList.add('hidden');
     document.getElementById('loading').classList.remove('hidden');
 
     try {
-      //    CORRECCIÓN: la URL incluye ?tgid= como respaldo adicional
-      //    (el nodo de n8n busca en query Y en body, cualquiera que llegue primero)
-      const urlConTgid = tgid
-        ? `${N8N_WEBHOOK_URL}?tgid=${encodeURIComponent(tgid)}`
-        : N8N_WEBHOOK_URL;
-
-      const response = await fetch(urlConTgid, {
+      const response = await fetch(N8N_WEBHOOK_URL, {
         method: 'POST',
-        // NO poner Content-Type manualmente — el browser lo agrega
-        // automáticamente con el boundary correcto para multipart/form-data
         body: formData
       });
 
-      // 5. Leer respuesta como texto primero (n8n a veces devuelve texto plano)
       const responseText = await response.text();
       let data = {};
 
@@ -260,26 +209,15 @@
         }
       }
 
-      // 6. Detectar errores HTTP o lógicos
       if (!response.ok || data.success === false) {
         throw new Error(data.error || `Error del servidor: código ${response.status}`);
       }
 
-      // 7. Pantalla de éxito
+      const idSolicitud = data.id_solicitud || '';
       document.getElementById('loading').classList.add('hidden');
       document.getElementById('success-screen').classList.remove('hidden');
-      document.getElementById('res-id').textContent = 'ID de solicitud: ' + (data.id_solicitud || 'N/A');
-
-      const tgLink = document.getElementById('tg-link');
-      const tgNota = document.getElementById('tg-nota');
-
-      if (tgid) {
-        tgLink.href = `https://t.me/${TELEGRAM_BOT_USER}?start=${data.id_solicitud}`;
-        tgNota.textContent = 'Haz clic para abrir el bot y recibir la notificación.';
-      } else {
-        tgLink.classList.add('opacity-50', 'pointer-events-none');
-        tgNota.textContent = 'Sin Telegram ID — no disponible en esta sesión.';
-      }
+      document.getElementById('res-id').textContent = 'ID de solicitud: ' + (idSolicitud || 'N/A');
+      document.getElementById('tg-link').href = `https://t.me/${TELEGRAM_BOT_USER}?start=${idSolicitud}`;
 
     } catch (error) {
       console.error('Error al enviar formulario:', error);
