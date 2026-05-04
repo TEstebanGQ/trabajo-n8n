@@ -1,8 +1,8 @@
 /* ── CONFIG ── */
 const IS_LOCAL = ['localhost','127.0.0.1'].includes(location.hostname);
-const WEBHOOK   = IS_LOCAL
-  ? 'https://tomas-jk-esteban.app.n8n.cloud/webhook-test/inasistencia'
-  : 'https://tomas-jk-esteban.app.n8n.cloud/webhook/inasistencia';
+const WEBHOOK  = IS_LOCAL
+  ? 'https://prozac-freight-catalog.ngrok-free.dev/webhook-test/inasistencia'
+  : 'https://prozac-freight-catalog.ngrok-free.dev/webhook/inasistencia';
 const BOT = 'alertas_2026_ia_bot';
 const MAX_MB = 10;
 const TIPOS  = ['application/pdf','image/jpeg','image/png','image/jpg'];
