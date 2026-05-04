@@ -1,6 +1,6 @@
 /* ── CONFIG ── */
 const IS_LOCAL = ['localhost','127.0.0.1'].includes(location.hostname);
-const WEBHOOK   = IS_LOCAL
+const WEBHOOK  = IS_LOCAL
   ? 'https://tomas-jk-esteban.app.n8n.cloud/webhook-test/inasistencia'
   : 'https://tomas-jk-esteban.app.n8n.cloud/webhook/inasistencia';
 const BOT = 'alertas_2026_ia_bot';
